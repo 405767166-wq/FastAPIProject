@@ -1,11 +1,26 @@
-# Test your FastAPI endpoints
+# 会议纪要转写系统 backend REST 冒烟（V1 骨架）
+# 启动：cd backend && uvicorn app.main:app --reload --port 8000
 
-GET http://127.0.0.1:8000/
+@host = http://127.0.0.1:8000
+
+### 健康检查
+GET {{host}}/api/health
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/hello/User
+### 历史会议列表（空）
+GET {{host}}/api/meetings
 Accept: application/json
 
 ###
+
+### 会议详情（不存在 → 40401）
+GET {{host}}/api/meetings/not-exist
+Accept: application/json
+
+###
+
+### 上传（骨架阶段 → 501；核心逻辑实现后启用）
+POST {{host}}/api/meetings
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW

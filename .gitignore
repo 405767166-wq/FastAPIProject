@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+
+# 运行期文件（录音落盘、临时块）
+backend/uploads/
+uploads/
+
+# 环境配置（含服务器密码，禁止入库；模板见 backend/.env.example）
+.env
+backend/.env
+
+# 前端（V2）
+frontend/node_modules/
+frontend/dist/
+
+# 工具链
+tools/
