@@ -1,24 +1,37 @@
 """会议 REST 路由（M3）：对应 接口文档.md §5.2 ~ §5.8。
 
-V1 骨架阶段：列表/详情/词频/总结/删除已接 MemoryStore（真实语义）；
-上传（P2.1）与处理管线在 V1 核心逻辑实现后启用。
+V1：列表/详情/词频/总结/删除已接 MemoryStore（真实语义）；
+上传（P2.1）已实现：校验 → 落盘 → 建记录(queued) → 入队；
+处理管线（worker）在后续任务启用。
 """
 
 from __future__ import annotations
 
+import uuid
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 
-from app.errors import ApiError, ErrCode, not_implemented
+from app.config import settings
+from app.errors import ApiError, ErrCode
+from app.queue.base import TaskQueue
 from app.responses import ok
 from app.store.base import MeetingStore
 
 router = APIRouter(prefix="/meetings")
 
+# P2.1 上传校验（接口文档.md §5.2）：允许的音频扩展名与大小上限。
+ALLOWED_AUDIO_EXTS = {".mp3", ".wav", ".m4a", ".aac"}
+MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200MB
+
 
 def _store(request: Request) -> MeetingStore:
     return request.app.state.store
+
+
+def _queue(request: Request) -> TaskQueue:
+    return request.app.state.queue
 
 
 @router.get("")
@@ -37,9 +50,70 @@ async def list_meetings(
 
 
 @router.post("")
-async def create_meeting(request: Request) -> dict:
-    """P2.1 上传会议录音（multipart）。V1 核心逻辑实现后启用。"""
-    raise not_implemented("POST /api/meetings")
+async def create_meeting(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
+) -> dict:
+    """P2.1 上传会议录音：校验（扩展名/大小）→ 落盘 → 建记录(queued) → 入队。"""
+    file_name = file.filename or ""
+    ext = Path(file_name).suffix.lower()
+    if ext not in ALLOWED_AUDIO_EXTS:
+        raise ApiError(
+            ErrCode.PARAM,
+            f"仅支持音频文件（mp3/wav/m4a/aac），收到扩展名：{ext or '无'}",
+            http_status=400,
+        )
+
+    meeting_id = uuid.uuid4().hex
+    meeting_dir = Path(settings.upload_dir) / meeting_id
+    dest = meeting_dir / f"raw{ext}"
+
+    size = 0
+    too_large = False
+    try:
+        meeting_dir.mkdir(parents=True, exist_ok=True)
+        with dest.open("wb") as out:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > MAX_UPLOAD_BYTES:
+                    too_large = True
+                    break
+                out.write(chunk)
+    except Exception as exc:
+        raise ApiError(ErrCode.INTERNAL, f"文件落盘失败：{exc}", http_status=500) from exc
+    finally:
+        await file.close()
+
+    if too_large:
+        dest.unlink(missing_ok=True)
+        raise ApiError(ErrCode.PARAM, "文件大小超过 200MB 上限", http_status=400)
+
+    title_final = (title or "").strip() or file_name
+    record = _store(request).create_meeting(
+        meeting_id=meeting_id,
+        title=title_final,
+        file_name=file_name,
+        file_path=str(dest),
+        file_size=size,
+    )
+
+    _queue(request).push({
+        "meeting_id": meeting_id,
+        "file_path": str(dest),
+        "title": title_final,
+    })
+
+    return ok({
+        "meeting_id": meeting_id,
+        "title": title_final,
+        "status": record.get("status", "queued"),
+        "progress": record.get("progress", 0),
+        "message": "已进入处理队列",
+    })
 
 
 @router.get("/{meeting_id}")

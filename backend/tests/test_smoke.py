@@ -30,11 +30,3 @@ def test_not_found_meeting() -> None:
         resp = client.get("/api/meetings/does-not-exist")
         assert resp.status_code == 404
         assert resp.json()["code"] == 40401
-
-
-def test_upload_still_pending_in_skeleton() -> None:
-    """骨架阶段上传接口未实现，返回 501（统一响应体）。核心逻辑启用后此用例替换。"""
-    with TestClient(app) as client:
-        resp = client.post("/api/meetings")
-        assert resp.status_code == 501
-        assert resp.json()["code"] != 0
