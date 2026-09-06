@@ -19,14 +19,14 @@ def test_implements_asr_engine() -> None:
 
 
 def test_transcribe_is_awaitable_coroutine() -> None:
-    coro = MockEngine(delay_seconds=0).transcribe("x.mp3")
+    coro = MockEngine(delay_seconds=0).transcribeAPI("x.mp3")
     assert asyncio.iscoroutine(coro)
     coro.close()  # 关闭未消费的协程，避免告警
 
 
 async def test_transcribe_returns_demo_text() -> None:
     engine = MockEngine(delay_seconds=0)
-    text = await engine.transcribe("uploads/x/chunks/chunk_0001.mp3")
+    text = await engine.transcribeAPI("uploads/x/chunks/chunk_0001.mp3")
     assert isinstance(text, str)
     assert text == _DEMO_TEXT
     assert len(text) > 10
@@ -35,14 +35,14 @@ async def test_transcribe_returns_demo_text() -> None:
 async def test_transcribe_returns_text_for_any_path() -> None:
     engine = MockEngine(delay_seconds=0)
     for path in ("a.mp3", "b.wav", "chunk_0002.mp3"):
-        assert len(await engine.transcribe(path)) > 10
+        assert len(await engine.transcribeAPI(path)) > 10
 
 
 async def test_transcribe_observable_delay() -> None:
     # 可观测延时：至少等待约 delay_seconds（留余量避免计时抖动）
     engine = MockEngine(delay_seconds=0.1)
     start = time.monotonic()
-    await engine.transcribe("x.mp3")
+    await engine.transcribeAPI("x.mp3")
     elapsed = time.monotonic() - start
     assert elapsed >= 0.05
 

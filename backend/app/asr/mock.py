@@ -21,6 +21,6 @@ class MockEngine(ASREngine):
     def __init__(self, delay_seconds: float = 0.3) -> None:
         self._delay = delay_seconds
 
-    async def transcribe(self, audio_path: str) -> str:
+    async def transcribeAPI(self, audio_path: str) -> str:
         await asyncio.sleep(self._delay)  # 模拟"处理中"，让进度可见
         return _DEMO_TEXT

@@ -15,6 +15,7 @@ class SingleChunker(Chunker):
         src = Path(audio_path)
         out_dir = Path(work_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
-        target = out_dir / "chunk_0001.mp3"
+        # 保留原始扩展名：下游 ASR 引擎按扩展名判断音频格式（wav/mp3/...）
+        target = out_dir / f"chunk_0001{src.suffix.lower()}"
         shutil.copy2(src, target)
         return [str(target)]

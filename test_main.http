@@ -1,26 +1,47 @@
-# 会议纪要转写系统 backend REST 冒烟（V1 骨架）
-# 启动：cd backend && uvicorn app.main:app --reload --port 8000
+# ===== 会议纪要转写系统 · 手动调用一次 =====
+# 前置：先启动服务器（双击 启动服务器.bat 或 python backend/run.py）
+# 用法：PyCharm 打开本文件 → 逐条点左侧绿色 ▶（每条用 ### 分隔，可分开执行）
+# 提示：上传后会返回 meeting_id，把值填到下面 @meeting_id 里，再跑查询接口。
 
 @host = http://127.0.0.1:8000
+@meeting_id = 把上传返回的meeting_id粘贴到这里
 
-### 健康检查
+### 0. 健康检查
 GET {{host}}/api/health
 Accept: application/json
 
-###
+### 1. 上传会议音频（文件：backend/uploads/samples/meeting_demo_16k.wav）
+# 执行后：复制返回 data.meeting_id → 粘到文件顶部 @meeting_id
+POST {{host}}/api/meetings
+Content-Type: multipart/form-data; boundary=WebAppBoundary
 
-### 历史会议列表（空）
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="meeting_demo_16k.wav"
+Content-Type: audio/wav
+
+< C:\Users\L\PycharmProjects\FastAPIProject\backend\uploads\samples\meeting_demo_16k.wav
+--WebAppBoundary
+Content-Disposition: form-data; name="title"
+
+手动测试会议
+--WebAppBoundary--
+
+### 2. 查详情（看状态：queued → processing → completed；多跑几次直到 completed）
+GET {{host}}/api/meetings/{{meeting_id}}
+Accept: application/json
+
+### 3. 查词频（completed 后）
+GET {{host}}/api/meetings/{{meeting_id}}/words?top=10
+Accept: application/json
+
+### 4. 查总结
+GET {{host}}/api/meetings/{{meeting_id}}/summary
+Accept: application/json
+
+### 5. 历史列表
 GET {{host}}/api/meetings
 Accept: application/json
 
-###
-
-### 会议详情（不存在 → 40401）
-GET {{host}}/api/meetings/not-exist
+### 6. 删除会议
+DELETE {{host}}/api/meetings/{{meeting_id}}
 Accept: application/json
-
-###
-
-### 上传（骨架阶段 → 501；核心逻辑实现后启用）
-POST {{host}}/api/meetings
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW

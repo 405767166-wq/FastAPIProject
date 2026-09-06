@@ -20,7 +20,7 @@ from app.api import api_router
 from app.config import settings
 from app.errors import ApiError
 from app.queue.native_queue import NativeTaskQueue
-from app.responses import err
+from app.responses import error
 from app.store.base import MeetingStore
 from app.store.memory import MemoryStore
 from app.worker import Worker
@@ -75,7 +75,7 @@ async def api_error_handler(request: Request, exc: ApiError) -> JSONResponse:
     """业务异常 → 统一响应体 {code, message, data} + 对应 HTTP 状态码。"""
     return JSONResponse(
         status_code=exc.http_status,
-        content=err(exc.code, exc.message, exc.data),
+        content=error(exc.code, exc.message, exc.data),
     )
 
 

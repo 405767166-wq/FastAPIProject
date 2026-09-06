@@ -9,6 +9,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pydantic-settings>=2.4",
     "jieba>=0.42.1",
+    "requests>=2.34.2",
 ]
 
 [project.optional-dependencies]

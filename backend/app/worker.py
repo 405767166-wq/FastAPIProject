@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from app.asr.BaiduEngine import BaiduEngine
 from app.asr.base import ASREngine
 from app.asr.mock import MockEngine
 from app.chunk.base import Chunker
@@ -34,11 +35,12 @@ class Worker:
         asr: ASREngine | None = None,
         summarizer: Summarizer | None = None,
     ) -> None:
-        """依赖注入：默认使用 V1 实现（SingleChunker / MockEngine / TemplateSummarizer）。"""
+        """依赖注入：chunker/summarizer 默认 V1 实现；asr 默认 BaiduEngine（真实识别，
+        需 backend/.env 配 BAIDU key；无 key 场景可注入 MockEngine()）。"""
         self._queue = queue
         self._store = store
         self._chunker = chunker or SingleChunker()
-        self._asr = asr or MockEngine()
+        self._asr = asr or BaiduEngine()
         self._summarizer = summarizer or TemplateSummarizer()
 
     async def run(self) -> None:
@@ -63,10 +65,12 @@ class Worker:
             chunk_count = len(chunks)
             self._store.update_meeting(meeting_id, chunk_count=chunk_count, stage="asr")
 
-            # M7 语音转写（MockEngine）逐块
+            # M7 语音转写：逐块交给 ASR 引擎（统一异步接口：await engine.transcribeAPI(audio_path) -> str）
+            #     MockEngine   —— 无 key 演示（示例文本 + 延时）
+            #     BaiduEngine  —— 真实识别（内部自管 token，支持 wav/pcm/amr/m4a）
             transcript_parts = []
             for idx, chunk in enumerate(chunks, start=1):
-                text = await self._asr.transcribe(chunk)
+                text = await self._asr.transcribeAPI(chunk)
                 transcript_parts.append(text)
                 progress = int(idx / chunk_count * 100)
                 self._store.update_meeting(meeting_id, progress=progress, stage="asr")
