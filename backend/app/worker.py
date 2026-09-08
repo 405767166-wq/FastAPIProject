@@ -21,9 +21,15 @@ from app.freq.analyzer import analyze
 from app.queue.base import TaskQueue
 from app.store.base import MeetingStore
 from app.summary.base import Summarizer
+from app.summary.deepseek import DeepSeekSummarizer
 from app.summary.template import TemplateSummarizer
 
 logger = logging.getLogger(__name__)
+
+
+def _default_summarizer() -> DeepSeekSummarizer | TemplateSummarizer:
+    """配了 DEEPSEEK_API_KEY → DeepSeek 真实总结；否则模板降级（V1，is_mock=True）。"""
+    return DeepSeekSummarizer() if settings.deepseek_api_key else TemplateSummarizer()
 
 
 class Worker:
@@ -35,13 +41,13 @@ class Worker:
         asr: ASREngine | None = None,
         summarizer: Summarizer | None = None,
     ) -> None:
-        """依赖注入：chunker/summarizer 默认 V1 实现；asr 默认 BaiduEngine（真实识别，
-        需 backend/.env 配 BAIDU key；无 key 场景可注入 MockEngine()）。"""
+        """依赖注入：chunker 默认 Single；asr 默认 BaiduEngine（配 key 真实识别）；
+        summarizer 默认按配置（配 DEEPSEEK key → DeepSeek，否则模板降级）。"""
         self._queue = queue
         self._store = store
         self._chunker = chunker or SingleChunker()
         self._asr = asr or BaiduEngine()
-        self._summarizer = summarizer or TemplateSummarizer()
+        self._summarizer = summarizer or _default_summarizer()
 
     async def run(self) -> None:
         """消费循环：被 FastAPI lifespan 作为后台任务拉起，关闭时取消。"""
@@ -81,7 +87,8 @@ class Worker:
             top_words = analyze(transcript, top_n=20)
             self._store.save_words(meeting_id, top_words)
 
-            # M8 模板总结（is_mock=True）
+            # M8 智能总结：配 DEEPSEEK key → DeepSeek 真实纪要（is_mock=False）；
+            #            无 key/失败 → TemplateSummarizer 自动降级（is_mock=True）
             self._store.update_meeting(meeting_id, stage="summary")
             summary_result = await self._summarizer.summarize(transcript, top_words)
             summary = summary_result["summary"]
