@@ -12,6 +12,9 @@ dependencies = [
     "myapplication>=0.1.0",
     "the-new-hotness>=1.5.0",
     "requests>=2.34.2",
+    "sqlalchemy>=2.0",
+    "pymysql>=1.1",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]

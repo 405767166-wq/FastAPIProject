@@ -23,7 +23,7 @@ async def health(request: Request) -> dict:
         "queue_size": queue.size,             # 在途任务数
         "storage": settings.storage_backend,  # memory | mysql
         "asr": settings.asr_provider,         # mock | baidu | ...
-        "mysql": False,
+        "mysql": settings.storage_backend == "mysql",
         "redis": False,
         # 供观测使用（不暴露内部结构）
         "meetings": store.list_meetings(page=1, page_size=1)[0],
