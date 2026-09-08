@@ -14,7 +14,7 @@
     - meeting_id 为业务主键（uuid4().hex），四表以其关联；子表以 meeting_id 外键
       引用主表并 ON DELETE CASCADE（删除会议自动清转录/词频/总结）。
     - 写入均以 meeting_id 为幂等键：转录/总结 一对一 upsert；词频为整表覆盖。
-    - created_at/updated_at 默认 UTC，与 memory.py 的 _now_iso 语义一致。
+    - created_at/updated_at 默认本地时间（naive），与 init.sql 的 CURRENT_TIMESTAMP 一致。
 
 启用条件（app/config.py）：配置了 `MYSQL_HOST`，storage_backend 即返回 "mysql"。
 本类不感知后端选择，由 main.py 的 build_store() 按 settings 决定使用。
@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Iterator
 
 from sqlalchemy import (
@@ -64,9 +64,9 @@ _RECORD_FIELDS = frozenset({
 })
 
 
-def _utcnow() -> datetime:
-    """UTC 时间（去掉 tzinfo），写入 DATETIME 列，与 memory.py 的 UTC 语义一致。"""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def _now() -> datetime:
+    """本地时间（naive datetime），写入 DATETIME 列，与 init.sql 的 CURRENT_TIMESTAMP 一致。"""
+    return datetime.now().replace(microsecond=0)
 
 
 # 主键类型：MySQL 用 BIGINT（与 init.sql 一致）；SQLite 用 INTEGER（触发行号自增，
@@ -98,9 +98,9 @@ class MeetingRecord(Base):
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     stage: Mapped[str] = mapped_column(String(20), nullable=False, default="queued")
     error_message: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=_utcnow, onupdate=_utcnow,
+        DateTime, nullable=False, default=_now, onupdate=_now,
     )
 
     __table_args__ = (Index("idx_status_created", "status", "created_at"),)
@@ -120,9 +120,9 @@ class MeetingTranscript(Base):
     )
     transcript: Mapped[str | None] = mapped_column(TRANSCRIPT_COL, nullable=True)
     asr_provider: Mapped[str] = mapped_column(String(30), nullable=False, default="mock")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=_utcnow, onupdate=_utcnow,
+        DateTime, nullable=False, default=_now, onupdate=_now,
     )
 
 
@@ -139,7 +139,7 @@ class MeetingWordFrequency(Base):
     )
     word: Mapped[str] = mapped_column(String(64), nullable=False)
     freq: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
 
     __table_args__ = (
         Index("uk_meeting_word", "meeting_id", "word", unique=True),
@@ -162,9 +162,9 @@ class MeetingSummary(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_is_mock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     model: Mapped[str] = mapped_column(String(50), nullable=False, default="template")
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=_utcnow, onupdate=_utcnow,
+        DateTime, nullable=False, default=_now, onupdate=_now,
     )
 
 

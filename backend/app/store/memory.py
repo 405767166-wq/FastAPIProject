@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import itertools
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from app.store.base import MeetingStore
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    """本地时间 ISO 字符串（与 mysql.py 的 _now / init.sql 的 CURRENT_TIMESTAMP 一致）。"""
+    return datetime.now().replace(microsecond=0).isoformat(timespec="seconds")
 
 
 class MemoryStore(MeetingStore):

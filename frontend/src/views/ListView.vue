@@ -20,6 +20,7 @@
           <td>{{ m.created_at }}</td>
           <td>
             <router-link :to="`/meetings/${m.meeting_id}`">查看</router-link>
+            <button class="del" @click="remove(m)">删除</button>
           </td>
         </tr>
       </tbody>
@@ -43,5 +44,27 @@ async function load() {
   }
 }
 
+async function remove(m) {
+  if (!window.confirm(`确认删除「${m.title}」吗？此操作不可恢复。`)) return
+  try {
+    const { data } = await api.delete(`/meetings/${m.meeting_id}`)
+    if (data.code === 0) {
+      load()
+    } else {
+      window.alert(data.message)
+    }
+  } catch (e) {
+    window.alert(e?.response?.data?.message || '删除失败')
+  }
+}
+
 onMounted(load)
 </script>
+
+<style scoped>
+.del {
+  margin-left: 10px;
+  color: #dc2626;
+  border-color: #dc2626;
+}
+</style>

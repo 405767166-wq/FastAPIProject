@@ -1,6 +1,9 @@
 <template>
   <div v-if="m">
-    <h2>{{ m.title }}</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <h2>{{ m.title }}</h2>
+      <button class="del" @click="remove">删除会议</button>
+    </div>
     <p>状态：<b>{{ m.status }}</b> ｜ 进度：{{ m.progress }}% ｜ 阶段：{{ m.stage }}</p>
     <div class="bar"><div class="fill" :style="{ width: m.progress + '%' }"></div></div>
 
@@ -26,14 +29,25 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 
 const route = useRoute()
+const router = useRouter()
 const m = ref(null)
 const words = ref([])
 const summary = ref('')
 let timer = null
+
+async function remove() {
+  if (!window.confirm('确认删除该会议吗？此操作不可恢复。')) return
+  try {
+    await api.delete(`/meetings/${route.params.id}`)
+    router.push('/meetings')
+  } catch (e) {
+    window.alert(e?.response?.data?.message || '删除失败')
+  }
+}
 
 async function poll() {
   try {
@@ -60,3 +74,10 @@ onMounted(() => {
 
 onUnmounted(() => clearInterval(timer))
 </script>
+
+<style scoped>
+.del {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+</style>
