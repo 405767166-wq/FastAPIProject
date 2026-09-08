@@ -31,6 +31,10 @@ logger = logging.getLogger(__name__)
 
 def build_store() -> MeetingStore:
     """V1：内存存储。V2：settings.storage_backend == "mysql" 时换 MySQLStore。"""
+    if settings.storage_backend == "mysql":
+        # 惰性导入：内存模式无需 MySQL 相关依赖/连接，保留纯内存兜底。
+        from app.store.mysql import MySQLStore
+        return MySQLStore()
     return MemoryStore()
 
 
