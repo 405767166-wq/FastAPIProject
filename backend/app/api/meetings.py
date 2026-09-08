@@ -127,15 +127,21 @@ async def get_meeting(meeting_id: str, request: Request) -> dict:
 
 @router.get("/{meeting_id}/words")
 async def get_words(meeting_id: str, request: Request,
-                    top: int = 20, min_freq: int = 1) -> dict:
-    """P2.5 词频查询。"""
+                    top: Annotated[int, Query(ge=1)] = 20,
+                    min_freq: Annotated[int, Query(ge=1)] = 1) -> dict:
+    """P2.5 词频查询：min_freq 过滤低频词，top 截取前 N 个（按 freq 降序）。"""
     store = _store(request)
     if store.get_meeting(meeting_id) is None:
         raise ApiError(ErrCode.NOT_FOUND, "会议不存在", http_status=404)
     items = store.get_words(meeting_id)
     if not items:
         raise ApiError(ErrCode.STAGE, "任务尚未到词频阶段", http_status=409)
-    return ok({"meeting_id": meeting_id, "total_words": len(items), "items": items})
+    filtered = [w for w in items if w.get("freq", 0) >= min_freq]
+    return ok({
+        "meeting_id": meeting_id,
+        "total_words": len(items),  # 去重词数（过滤前，接口文档 P2.5 语义）
+        "items": filtered[:top],    # 按 min_freq 过滤 + top 截断
+    })
 
 
 @router.get("/{meeting_id}/summary")

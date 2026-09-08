@@ -16,6 +16,7 @@ import pytest
 from app.asr.mock import MockEngine
 from app.queue.native_queue import NativeTaskQueue
 from app.store.memory import MemoryStore
+from app.summary.template import TemplateSummarizer
 from app.worker import Worker
 
 # backend/tests/test_worker.py -> parent[2] 为仓库根目录。
@@ -50,7 +51,7 @@ async def test_enqueue_consume_to_completed(temp_ws: Path) -> None:
     queue.push({"meeting_id": meeting_id, "file_path": str(audio), "title": "周会"})
     task = await queue.pop()
 
-    worker = Worker(queue=queue, store=store, asr=MockEngine(delay_seconds=0))
+    worker = Worker(queue=queue, store=store, asr=MockEngine(delay_seconds=0), summarizer=TemplateSummarizer())
     await worker._handle(task)
 
     record = store.get_meeting(meeting_id)
@@ -81,7 +82,7 @@ async def test_enqueue_consume_records_file_and_progress(temp_ws: Path) -> None:
     queue.push({"meeting_id": meeting_id, "file_path": str(audio), "title": "周会"})
     task = await queue.pop()
 
-    worker = Worker(queue=queue, store=store, asr=MockEngine(delay_seconds=0))
+    worker = Worker(queue=queue, store=store, asr=MockEngine(delay_seconds=0), summarizer=TemplateSummarizer())
     await worker._handle(task)
 
     record = store.get_meeting(meeting_id)
@@ -101,7 +102,7 @@ async def test_failure_marks_failed_with_error(temp_ws: Path) -> None:
     )
     task = {"meeting_id": meeting_id, "file_path": bad_path, "title": "周会"}
 
-    worker = Worker(queue=queue, store=store, asr=MockEngine(delay_seconds=0))
+    worker = Worker(queue=queue, store=store, asr=MockEngine(delay_seconds=0), summarizer=TemplateSummarizer())
     await worker._handle(task)
 
     record = store.get_meeting(meeting_id)

@@ -20,5 +20,11 @@ backend/.env
 frontend/node_modules/
 frontend/dist/
 
+# Nginx（运行产物与二进制不入库）
+nginx/logs/
+nginx/temp/
+nginx/html/
+nginx/*.exe
+
 # 工具链
 tools/
